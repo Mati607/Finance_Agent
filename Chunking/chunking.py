@@ -35,7 +35,7 @@ class Chunk:
         self.start_char = start_char
         self.end_char = end_char
 
-        self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+        self.client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
         self._embedding = None
 
     def to_string(self) -> str:
