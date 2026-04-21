@@ -68,7 +68,7 @@ class Ingest:
         
     
     @property
-    def _ingest_txt(self):
+    def _ingest_txt(self) -> DataObject:
         with open(self.path, "r", encoding="utf-8") as f:
             text = f.read()
         df = pd.DataFrame({"content": pd.Series([text],dtype="string")})
@@ -81,7 +81,7 @@ class Ingest:
             self.path
         )
 
-    def execute(self):
+    def execute(self) -> DataObject:
         if self.document_type == self.document_type.CSV:
             return self._ingest_csv
 

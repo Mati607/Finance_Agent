@@ -121,7 +121,7 @@ class Chunker:
             abs_end = abs_start + len(para)
             yield para, abs_start, abs_end
 
-    def _txt_splitter(self) -> list[Chunk]:
+    def txt_splitter(self) -> list[Chunk]:
         text = self.data.data['content'][0]
         filename = self.data.filename
 
