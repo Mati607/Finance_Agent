@@ -1,0 +1,5 @@
+pandas
+openpyxl
+numpy
+python-dotenv
+google-genai
