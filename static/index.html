@@ -6,61 +6,100 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   :root {
-    --bg: #0f172a;
-    --panel: #111c36;
-    --panel-2: #16223f;
-    --text: #e5e7eb;
-    --muted: #94a3b8;
-    --accent: #60a5fa;
-    --accent-2: #22d3ee;
-    --border: #1f2a44;
-    --ok: #34d399;
-    --warn: #f59e0b;
-    --err: #f87171;
+    --bg: #faf9f5;
+    --panel: #ffffff;
+    --panel-2: #f5f2ec;
+    --text: #1f1e1d;
+    --muted: #6f6a5f;
+    --accent: #c96442;
+    --accent-hover: #b2583a;
+    --accent-soft: #f6eee9;
+    --border: #e7e2d7;
+    --border-strong: #d7d1c3;
+    --err: #b0341f;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  .wrap { max-width: 920px; margin: 0 auto; padding: 24px 16px 64px; }
-  h1 { font-size: 22px; margin: 0 0 16px; letter-spacing: 0.2px; }
-  h2 { font-size: 14px; color: var(--muted); margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px; }
-  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 20px; letter-spacing: -0.2px; }
+  h2 { font-size: 12px; color: var(--muted); margin: 0 0 10px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
   .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  input[type="file"] { color: var(--muted); }
+  input[type="file"] { color: var(--muted); font: inherit; }
+  input[type="file"]::file-selector-button {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 10px; margin-right: 10px; cursor: pointer; font: inherit;
+  }
+  input[type="file"]::file-selector-button:hover { background: #efeae0; }
   input[type="text"], textarea {
-    width: 100%; background: var(--panel-2); color: var(--text);
-    border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font: inherit;
+    width: 100%; background: #fff; color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px; font: inherit;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
-  textarea { min-height: 80px; resize: vertical; }
+  input[type="text"]:focus, textarea:focus {
+    outline: none; border-color: var(--border-strong);
+    box-shadow: 0 0 0 3px rgba(201, 100, 66, 0.12);
+  }
+  textarea { min-height: 84px; resize: vertical; }
   button {
-    background: var(--accent); color: #0b1220; border: 0; border-radius: 8px;
-    padding: 9px 14px; font-weight: 600; cursor: pointer;
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+    padding: 9px 16px; font-weight: 500; cursor: pointer; font: inherit;
+    transition: background 0.15s ease;
   }
-  button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
-  button.link { background: transparent; color: var(--accent-2); padding: 4px 0; border: 0; font-weight: 600; }
+  button:hover { background: var(--accent-hover); }
+  button.secondary {
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+  }
+  button.secondary:hover { background: var(--panel-2); }
+  button.link {
+    background: transparent; color: var(--accent); padding: 4px 0; border: 0; font-weight: 500;
+    text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px;
+  }
+  button.link:hover { color: var(--accent-hover); background: transparent; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .files { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-  .pill { background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--muted); }
-  .status { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .files { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .pill {
+    background: var(--accent-soft); border: 1px solid var(--border);
+    border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--text);
+  }
+  .status { font-size: 12px; color: var(--muted); margin-top: 10px; }
   .error { color: var(--err); }
-  .message { margin-bottom: 16px; }
-  .bubble { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
-  .bubble.user { background: #0b1428; }
-  .answer { white-space: pre-wrap; line-height: 1.5; }
-  .citations { margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 10px; display: none; }
+  .message { margin-bottom: 14px; }
+  .bubble {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 13px 15px;
+  }
+  .bubble.user { background: var(--panel-2); border-color: var(--border); }
+  .role { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; font-weight: 600; }
+  .answer { white-space: pre-wrap; line-height: 1.6; font-size: 15px; }
+  .citations {
+    margin-top: 12px; border-top: 1px solid var(--border);
+    padding-top: 12px; display: none;
+  }
   .citations.open { display: block; }
-  .cite { background: #0b1428; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+  .cite {
+    background: #fdfcf8; border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;
+  }
   .cite .meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-  .cite .content { white-space: pre-wrap; font-size: 14px; }
-  .cite pre { background: #05091a; border: 1px solid var(--border); border-radius: 6px; padding: 8px; overflow-x: auto; font-size: 12px; }
-  table.rows { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
-  table.rows th, table.rows td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; }
-  table.rows th { background: #0b1428; color: var(--muted); }
+  .cite .content { white-space: pre-wrap; font-size: 14px; line-height: 1.55; }
+  .cite pre {
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 10px; overflow-x: auto; font-size: 12px; margin: 6px 0;
+    color: var(--text);
+  }
+  table.rows { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; background: #fff; }
+  table.rows th, table.rows td { border: 1px solid var(--border); padding: 5px 9px; text-align: left; }
+  table.rows th { background: var(--panel-2); color: var(--muted); font-weight: 600; }
   .muted { color: var(--muted); font-size: 12px; }
-  .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 10px 0 6px; }
+  .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 12px 0 6px; font-weight: 600; }
   .spinner {
-    width: 14px; height: 14px; border: 2px solid var(--border);
+    width: 13px; height: 13px; border: 2px solid var(--border);
     border-top-color: var(--accent); border-radius: 50%;
-    display: inline-block; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px;
+    display: inline-block; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>
@@ -186,7 +225,7 @@ function appendMessage(kind, text) {
   if (kind === "error") {
     bubble.innerHTML = `<span class="error">${escapeHtml(text)}</span>`;
   } else if (kind === "user") {
-    bubble.innerHTML = `<div class="muted">You</div><div class="answer">${escapeHtml(text)}</div>`;
+    bubble.innerHTML = `<div class="role">You</div><div class="answer">${escapeHtml(text)}</div>`;
   } else {
     bubble.innerHTML = `<div class="answer">${escapeHtml(text)}</div>`;
   }
