@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Finance Agent</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #111c36;
+    --panel-2: #16223f;
+    --text: #e5e7eb;
+    --muted: #94a3b8;
+    --accent: #60a5fa;
+    --accent-2: #22d3ee;
+    --border: #1f2a44;
+    --ok: #34d399;
+    --warn: #f59e0b;
+    --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 16px; letter-spacing: 0.2px; }
+  h2 { font-size: 14px; color: var(--muted); margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  input[type="file"] { color: var(--muted); }
+  input[type="text"], textarea {
+    width: 100%; background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font: inherit;
+  }
+  textarea { min-height: 80px; resize: vertical; }
+  button {
+    background: var(--accent); color: #0b1220; border: 0; border-radius: 8px;
+    padding: 9px 14px; font-weight: 600; cursor: pointer;
+  }
+  button.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  button.link { background: transparent; color: var(--accent-2); padding: 4px 0; border: 0; font-weight: 600; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .files { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .pill { background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--muted); }
+  .status { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .error { color: var(--err); }
+  .message { margin-bottom: 16px; }
+  .bubble { background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .bubble.user { background: #0b1428; }
+  .answer { white-space: pre-wrap; line-height: 1.5; }
+  .citations { margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 10px; display: none; }
+  .citations.open { display: block; }
+  .cite { background: #0b1428; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; }
+  .cite .meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .cite .content { white-space: pre-wrap; font-size: 14px; }
+  .cite pre { background: #05091a; border: 1px solid var(--border); border-radius: 6px; padding: 8px; overflow-x: auto; font-size: 12px; }
+  table.rows { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  table.rows th, table.rows td { border: 1px solid var(--border); padding: 4px 8px; text-align: left; }
+  table.rows th { background: #0b1428; color: var(--muted); }
+  .muted { color: var(--muted); font-size: 12px; }
+  .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 10px 0 6px; }
+  .spinner {
+    width: 14px; height: 14px; border: 2px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    display: inline-block; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Finance Agent</h1>
+
+  <div class="card">
+    <h2>1. Upload sources (.txt / .csv / .xlsx)</h2>
+    <div class="row">
+      <input id="file-input" type="file" multiple accept=".txt,.csv,.xlsx" />
+      <button id="upload-btn">Upload</button>
+      <button id="reset-btn" class="secondary">Clear all</button>
+    </div>
+    <div id="files" class="files"></div>
+    <div id="upload-status" class="status"></div>
+  </div>
+
+  <div class="card">
+    <h2>2. Ask a question</h2>
+    <textarea id="query" placeholder="e.g. What drove the Enterprise Solutions Q3 miss?"></textarea>
+    <div class="row" style="margin-top: 8px;">
+      <button id="ask-btn">Ask</button>
+      <span id="ask-status" class="status"></span>
+    </div>
+  </div>
+
+  <div id="chat"></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const filesEl = $("files");
+const uploadStatus = $("upload-status");
+const askStatus = $("ask-status");
+const chat = $("chat");
+
+async function refreshFiles() {
+  try {
+    const r = await fetch("/files");
+    const j = await r.json();
+    renderFiles(j.files || []);
+  } catch (e) {}
+}
+
+function renderFiles(files) {
+  filesEl.innerHTML = "";
+  if (!files.length) {
+    filesEl.innerHTML = '<span class="muted">No files uploaded yet.</span>';
+    return;
+  }
+  for (const name of files) {
+    const el = document.createElement("span");
+    el.className = "pill";
+    el.textContent = name;
+    filesEl.appendChild(el);
+  }
+}
+
+$("upload-btn").onclick = async () => {
+  const input = $("file-input");
+  if (!input.files.length) {
+    uploadStatus.innerHTML = '<span class="error">Pick one or more .txt / .csv / .xlsx files.</span>';
+    return;
+  }
+  const fd = new FormData();
+  for (const f of input.files) fd.append("files", f);
+
+  uploadStatus.innerHTML = '<span class="spinner"></span>Uploading & indexing…';
+  $("upload-btn").disabled = true;
+  try {
+    const r = await fetch("/upload", { method: "POST", body: fd });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || "Upload failed");
+    renderFiles(j.files || []);
+    uploadStatus.textContent = `Indexed ${j.uploaded.length} file(s).`;
+    input.value = "";
+  } catch (e) {
+    uploadStatus.innerHTML = `<span class="error">${e.message}</span>`;
+  } finally {
+    $("upload-btn").disabled = false;
+  }
+};
+
+$("reset-btn").onclick = async () => {
+  if (!confirm("Remove all uploaded files?")) return;
+  await fetch("/reset", { method: "POST" });
+  renderFiles([]);
+  uploadStatus.textContent = "Cleared.";
+};
+
+$("ask-btn").onclick = async () => {
+  const q = $("query").value.trim();
+  if (!q) return;
+
+  appendMessage("user", q);
+  $("query").value = "";
+  askStatus.innerHTML = '<span class="spinner"></span>Thinking…';
+  $("ask-btn").disabled = true;
+
+  try {
+    const fd = new FormData();
+    fd.append("q", q);
+    const r = await fetch("/query", { method: "POST", body: fd });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.detail || "Query failed");
+    appendAnswer(j.answer, j.citations);
+    askStatus.textContent = "";
+  } catch (e) {
+    appendMessage("error", e.message);
+    askStatus.textContent = "";
+  } finally {
+    $("ask-btn").disabled = false;
+  }
+};
+
+function appendMessage(kind, text) {
+  const wrap = document.createElement("div");
+  wrap.className = "message";
+  const bubble = document.createElement("div");
+  bubble.className = "bubble " + (kind === "user" ? "user" : "");
+  if (kind === "error") {
+    bubble.innerHTML = `<span class="error">${escapeHtml(text)}</span>`;
+  } else if (kind === "user") {
+    bubble.innerHTML = `<div class="muted">You</div><div class="answer">${escapeHtml(text)}</div>`;
+  } else {
+    bubble.innerHTML = `<div class="answer">${escapeHtml(text)}</div>`;
+  }
+  wrap.appendChild(bubble);
+  chat.appendChild(wrap);
+  wrap.scrollIntoView({ behavior: "smooth", block: "end" });
+}
+
+function appendAnswer(answer, citations) {
+  const wrap = document.createElement("div");
+  wrap.className = "message";
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+
+  const total = (citations.semantic?.length || 0) + (citations.numeric?.length || 0);
+
+  bubble.innerHTML = `
+    <div class="muted">Agent</div>
+    <div class="answer">${escapeHtml(answer)}</div>
+    ${total > 0 ? `<button class="link toggle-cites">Show citations (${total})</button>` : ""}
+    <div class="citations"></div>
+  `;
+
+  if (total > 0) {
+    const toggle = bubble.querySelector(".toggle-cites");
+    const citesEl = bubble.querySelector(".citations");
+    citesEl.innerHTML = renderCitations(citations);
+    toggle.onclick = () => {
+      const open = citesEl.classList.toggle("open");
+      toggle.textContent = open ? "Hide citations" : `Show citations (${total})`;
+    };
+  }
+
+  wrap.appendChild(bubble);
+  chat.appendChild(wrap);
+  wrap.scrollIntoView({ behavior: "smooth", block: "end" });
+}
+
+function renderCitations(c) {
+  const parts = [];
+  if (c.semantic && c.semantic.length) {
+    parts.push('<div class="section-title">Semantic</div>');
+    for (const s of c.semantic) {
+      const metaBits = [];
+      if (s.source_file) metaBits.push(escapeHtml(s.source_file));
+      if (s.title) metaBits.push(escapeHtml(s.title));
+      if (s.date) metaBits.push(escapeHtml(s.date));
+      if (s.author) metaBits.push("by " + escapeHtml(s.author));
+      else if (s.participants && s.participants.length) metaBits.push("participants: " + escapeHtml(s.participants.join(", ")));
+      parts.push(`
+        <div class="cite">
+          <div class="meta">${metaBits.join(" &middot; ")}</div>
+          <div class="content">${escapeHtml(s.content)}</div>
+        </div>
+      `);
+    }
+  }
+  if (c.numeric && c.numeric.length) {
+    parts.push('<div class="section-title">Numeric</div>');
+    for (const n of c.numeric) {
+      parts.push(`
+        <div class="cite">
+          <div class="meta">${escapeHtml(n.source_file)}</div>
+          <pre>${escapeHtml(n.sql)}</pre>
+          ${renderTable(n.columns, n.rows)}
+        </div>
+      `);
+    }
+  }
+  if (!parts.length) return '<div class="muted">No citations.</div>';
+  return parts.join("");
+}
+
+function renderTable(columns, rows) {
+  if (!rows || !rows.length) return '<div class="muted">No rows.</div>';
+  const cols = columns && columns.length ? columns : Object.keys(rows[0]);
+  const head = cols.map(c => `<th>${escapeHtml(String(c))}</th>`).join("");
+  const body = rows.map(r =>
+    "<tr>" + cols.map(c => `<td>${escapeHtml(r[c] === null || r[c] === undefined ? "" : String(r[c]))}</td>`).join("") + "</tr>"
+  ).join("");
+  return `<table class="rows"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+function escapeHtml(s) {
+  return String(s)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+refreshFiles();
+</script>
+</body>
+</html>

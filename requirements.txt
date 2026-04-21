@@ -6,3 +6,6 @@ google-genai
 faiss-cpu
 duckdb
 baml-py
+fastapi
+uvicorn
+python-multipart
