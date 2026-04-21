@@ -1,0 +1,6 @@
+*.csv
+*.xls
+*.xlsx
+README_FOR_CANDIDATE.md
+.env
+commentary_excerpts.txt
