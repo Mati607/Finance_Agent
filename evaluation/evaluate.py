@@ -40,7 +40,15 @@ def build_agent() -> Agent:
             sys.exit(f"Missing corpus file: {path}. See README step 3.")
     paths = [str(p) for p, _ in CORPUS]
     mimes = [m for _, m in CORPUS]
-    retriever = Retriever(paths, mimes, topk=10, ingestor=Ingest, chunker=Chunker)
+    retriever = Retriever(
+        paths,
+        mimes,
+        topk=3,
+        ingestor=Ingest,
+        chunker=Chunker,
+        topk_retrieve=10,
+        topk_final=3,
+    )
     return Agent(retriever)
 
 
