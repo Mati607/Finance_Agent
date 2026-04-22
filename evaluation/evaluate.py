@@ -43,10 +43,9 @@ def build_agent() -> Agent:
     retriever = Retriever(
         paths,
         mimes,
-        topk=3,
         ingestor=Ingest,
         chunker=Chunker,
-        topk_retrieve=10,
+        topk_retrieve=20,
         topk_final=3,
     )
     return Agent(retriever)

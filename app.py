@@ -38,10 +38,9 @@ def _rebuild_agent() -> None:
     retriever = Retriever(
         paths,
         mimes,
-        topk=3,
         ingestor=Ingest,
         chunker=Chunker,
-        topk_retrieve=10,
+        topk_retrieve=20,
         topk_final=3,
     )
     state["agent"] = Agent(retriever)

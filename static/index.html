@@ -4,6 +4,9 @@
 <meta charset="utf-8" />
 <title>Finance Agent</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-light.min.css" />
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/sql.min.js"></script>
 <style>
   :root {
     --bg: #faf9f5;
@@ -88,8 +91,19 @@
   .cite .content { white-space: pre-wrap; font-size: 14px; line-height: 1.55; }
   .cite pre {
     background: var(--panel-2); border: 1px solid var(--border);
-    border-radius: 6px; padding: 8px 10px; overflow-x: auto; font-size: 12px; margin: 6px 0;
-    color: var(--text);
+    border-radius: 6px; padding: 10px 12px; font-size: 12.5px; margin: 6px 0;
+    color: var(--text); overflow-x: auto;
+  }
+  .cite pre code.hljs {
+    background: transparent; padding: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: 12.5px; line-height: 1.55;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .sql-label {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted); margin: 4px 0 2px;
   }
   table.rows { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; background: #fff; }
   table.rows th, table.rows td { border: 1px solid var(--border); padding: 5px 9px; text-align: left; }
@@ -254,6 +268,7 @@ function appendAnswer(answer, citations) {
     const toggle = bubble.querySelector(".toggle-cites");
     const citesEl = bubble.querySelector(".citations");
     citesEl.innerHTML = renderCitations(citations);
+    highlightSQL(citesEl);
     toggle.onclick = () => {
       const open = citesEl.classList.toggle("open");
       toggle.textContent = open ? "Hide citations" : `Show citations (${total})`;
@@ -287,10 +302,12 @@ function renderCitations(c) {
   if (c.numeric && c.numeric.length) {
     parts.push('<div class="section-title">Numeric</div>');
     for (const n of c.numeric) {
+      const pretty = formatSQL(n.sql || "");
       parts.push(`
         <div class="cite">
           <div class="meta">${escapeHtml(n.source_file)}</div>
-          <pre>${escapeHtml(n.sql)}</pre>
+          <div class="sql-label">SQL</div>
+          <pre><code class="language-sql">${escapeHtml(pretty)}</code></pre>
           ${renderTable(n.columns, n.rows)}
         </div>
       `);
@@ -308,6 +325,38 @@ function renderTable(columns, rows) {
     "<tr>" + cols.map(c => `<td>${escapeHtml(r[c] === null || r[c] === undefined ? "" : String(r[c]))}</td>`).join("") + "</tr>"
   ).join("");
   return `<table class="rows"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+function formatSQL(sql) {
+  if (!sql) return "";
+  let s = sql.replace(/\s+/g, " ").trim();
+
+  const breakBefore = [
+    "WITH", "SELECT", "FROM", "WHERE",
+    "GROUP BY", "ORDER BY", "HAVING", "LIMIT", "OFFSET",
+    "LEFT JOIN", "RIGHT JOIN", "INNER JOIN", "OUTER JOIN",
+    "FULL JOIN", "CROSS JOIN", "JOIN",
+    "UNION ALL", "UNION", "INTERSECT", "EXCEPT",
+    "ON", "AND", "OR"
+  ];
+
+  for (const kw of breakBefore) {
+    const re = new RegExp("\\s+" + kw.replace(/ /g, "\\s+") + "\\b", "gi");
+    s = s.replace(re, "\n" + kw);
+  }
+
+  const indentKeywords = new Set(["ON", "AND", "OR"]);
+  return s.split("\n").map(line => {
+    const head = line.trim().split(/\s+/)[0]?.toUpperCase() || "";
+    return (indentKeywords.has(head) ? "  " : "") + line.trim();
+  }).join("\n");
+}
+
+function highlightSQL(root) {
+  if (!window.hljs) return;
+  root.querySelectorAll("pre code.language-sql").forEach(el => {
+    try { window.hljs.highlightElement(el); } catch (e) {}
+  });
 }
 
 function escapeHtml(s) {

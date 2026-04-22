@@ -38,17 +38,15 @@ class Retriever:
             self,
             file_urls: List[str],
             mime_types: MimeType,
-            topk: int,
             ingestor: Ingest,
             chunker: Chunker,
-            topk_retrieve: Optional[int] = None,
-            topk_final: Optional[int] = None,
+            topk_retrieve: int,
+            topk_final: int,
     ):
         self.file_urls = file_urls
         self.mime_types = mime_types
-        self.topk_retrieve = topk_retrieve if topk_retrieve is not None else topk
-        self.topk_final = topk_final if topk_final is not None else topk
-        self.topk = self.topk_final
+        self.topk_retrieve = topk_retrieve
+        self.topk_final = topk_final
         self.ingestor = ingestor
         self.chunker = chunker
         self.text_tables = []
