@@ -1,5 +1,41 @@
+import re
 import pandas as pd
 from enum import Enum
+
+_PAREN_NEG_RE = re.compile(r"^\((-?\d+(?:\.\d+)?)\)$")
+_PERCENT_RE = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
+
+
+def _coerce_numeric_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert accounting-style '(6.8)' -> -6.8 and percent '-14.8%' -> -14.8
+    for columns where every non-null value parses as numeric after cleaning.
+    Columns with any non-numeric value (e.g. free-text Notes) are left alone."""
+    for col in df.columns:
+        if not pd.api.types.is_string_dtype(df[col]):
+            continue
+        raw = df[col].astype(str).str.strip()
+        converted = []
+        ok = True
+        for v in raw:
+            if v == "" or v.lower() in ("nan", "none"):
+                converted.append(None)
+                continue
+            m = _PAREN_NEG_RE.match(v)
+            if m:
+                converted.append(-float(m.group(1)))
+                continue
+            m = _PERCENT_RE.match(v)
+            if m:
+                converted.append(float(m.group(1)))
+                continue
+            try:
+                converted.append(float(v))
+            except ValueError:
+                ok = False
+                break
+        if ok:
+            df[col] = pd.Series(converted, index=df.index, dtype="float64")
+    return df
 
 class MimeType(Enum):
     CSV = 1
@@ -44,6 +80,7 @@ class Ingest:
     @property
     def _ingest_csv(self) -> DataObject:
         df = pd.read_csv(self.path)
+        df = _coerce_numeric_columns(df)
         schema = self._generate_schema(df)
         doc_type = MimeType.CSV
         return DataObject(
@@ -52,11 +89,12 @@ class Ingest:
             doc_type,
             self.path
         )
-        
-    
+
+
     @property
     def _ingest_xlsx(self) -> DataObject:
         df = pd.read_excel(self.path)
+        df = _coerce_numeric_columns(df)
         schema = self._generate_schema(df)
         doc_type = MimeType.XLSX
         return DataObject(

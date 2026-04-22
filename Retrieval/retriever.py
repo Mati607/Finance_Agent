@@ -163,7 +163,11 @@ class Retriever:
             df = table.data.reset_index().rename(columns={"index": "row_id"})
             con = duckdb.connect()
             con.register("df", df)
-            selected = con.execute(sql).df()
+            try:
+                selected = con.execute(sql).df()
+            except duckdb.Error as e:
+                print(f"[retriever] skipping table {table_index}: bad SQL: {e}")
+                continue
             if "row_id" in selected.columns:
                 selected = selected.set_index("row_id")
             results.append(NumericContext(selected, sql, table.filename))

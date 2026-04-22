@@ -9,3 +9,8 @@ baml-py
 fastapi
 uvicorn
 python-multipart
+
+# evaluation-only
+ragas
+langchain-google-genai
+datasets

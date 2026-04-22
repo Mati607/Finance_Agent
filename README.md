@@ -26,14 +26,6 @@ Create a `.env` file in the repo root:
 GOOGLE_API_KEY=<your-gemini-key>
 ```
 
-### 3. Add the assessment corpus
-
-Place these two files at the repo root (they are `.gitignore`'d, so a
-fresh clone will not include them):
-
-- `bu_financials_q3.csv`
-- `commentary_excerpts.txt`
-
 ### 4. Start the server
 
 ```bash
@@ -47,16 +39,6 @@ Open [http://localhost:8000](http://localhost:8000) in a browser.
 1. Upload `bu_financials_q3.csv` and `commentary_excerpts.txt` via the UI.
 2. Ask a question — e.g. *"Which business unit had the largest unfavorable variance in Q3, and what factors does the commentary attribute this to?"*
 3. The response shows the answer plus the semantic and numeric citations it relied on.
-
-Alternatively, hit the API directly:
-
-```bash
-curl -F "files=@bu_financials_q3.csv" -F "files=@commentary_excerpts.txt" \
-  http://localhost:8000/upload
-
-curl -F "q=Which business unit had the largest unfavorable variance in Q3, and what factors does the commentary attribute this to?" \
-  http://localhost:8000/query
-```
 
 ## Repository layout
 
@@ -103,9 +85,6 @@ chunk is serialized with a header prefix
 (`[#Chunk index: N | title | date | by author]\ncontent`) before
 embedding, so metadata participates in similarity. This boosts recall on
 entity-sensitive queries (e.g. *"what did the BU Finance Lead say?"*).
-
-Embeddings are computed lazily on first access
-([Chunking/chunking.py:56-65](Chunking/chunking.py#L56-L65)).
 
 ### Retrieval method
 

@@ -1,0 +1,23 @@
+[
+  {
+    "id": "q1_flagship_variance",
+    "question": "Which business unit had the largest unfavorable variance in Q3, and what factors does the commentary attribute this to?",
+    "ground_truth": "Enterprise Solutions had the largest unfavorable Q3 2024 variance, with revenue of $39.2M against a $46.0M plan (-$6.8M, -14.8%) and EBITDA of $5.1M vs. a $9.2M plan (-$4.1M). The Q3 Enterprise Solutions BU commentary (authored by the BU Finance Lead) attributes the miss to two factors: (1) a ~$4.2M FSI renewal that slipped from late September into Q4 due to the customer's procurement freeze related to a pending acquisition, and (2) softer professional services revenue as prior-quarter implementation work wound down and new project starts were delayed."
+  },
+  {
+    "id": "q2_pure_numeric",
+    "question": "What was Mid-Market's Q3 2024 revenue and how did it compare to plan?",
+    "ground_truth": "Mid-Market Q3 2024 revenue was $20.4M against a $20.0M plan, $0.4M favorable (+2.0%)."
+  },
+  {
+    "id": "q3_qualitative_cause",
+    "question": "What caused Emerging Markets' Q1 2024 revenue shortfall?",
+    "ground_truth": "Emerging Markets Q1 2024 revenue of $7.2M was $0.8M unfavorable to a $8.0M plan (-10%). The CSV note and Document 4 attribute the shortfall to a slower-than-expected ramp in LATAM."
+  },
+  {
+    "id": "q4_ceo_honeypot",
+    "question": "What was the CEO's guidance on the Q3 variance and what remediation steps did she commit to?",
+    "ground_truth": "Cannot be answered. The corpus contains no CEO statements or commitments; the only senior speaker in the Q3 QBR transcript is the CFO.",
+    "expect_refusal": true
+  }
+]
