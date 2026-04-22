@@ -44,7 +44,7 @@ class Ingest:
     @property
     def _ingest_csv(self) -> DataObject:
         df = pd.read_csv(self.path)
-        schema = self,self._generate_schema(df)
+        schema = self._generate_schema(df)
         doc_type = MimeType.CSV
         return DataObject(
             df,
