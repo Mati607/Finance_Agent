@@ -37,7 +37,7 @@ CORPUS = [
 def build_agent() -> Agent:
     for path, _ in CORPUS:
         if not path.exists():
-            sys.exit(f"Missing corpus file: {path}. See README step 3.")
+            sys.exit(f"Missing corpus file: {path}.")
     paths = [str(p) for p, _ in CORPUS]
     mimes = [m for _, m in CORPUS]
     retriever = Retriever(

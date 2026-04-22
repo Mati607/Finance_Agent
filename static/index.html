@@ -70,10 +70,12 @@
   }
   .status { font-size: 12px; color: var(--muted); margin-top: 10px; }
   .error { color: var(--err); }
-  .message { margin-bottom: 14px; }
+  .message { margin-bottom: 14px; min-width: 0; }
   .bubble {
     background: var(--panel); border: 1px solid var(--border);
     border-radius: 12px; padding: 13px 15px;
+    min-width: 0;
+    max-width: 100%;
   }
   .bubble.user { background: var(--panel-2); border-color: var(--border); }
   .role { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; font-weight: 600; }
@@ -81,18 +83,22 @@
   .citations {
     margin-top: 12px; border-top: 1px solid var(--border);
     padding-top: 12px; display: none;
+    min-width: 0;
+    max-width: 100%;
   }
   .citations.open { display: block; }
   .cite {
     background: #fdfcf8; border: 1px solid var(--border);
     border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;
+    min-width: 0;
+    max-width: 100%;
   }
   .cite .meta { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
   .cite .content { white-space: pre-wrap; font-size: 14px; line-height: 1.55; }
   .cite pre {
     background: var(--panel-2); border: 1px solid var(--border);
     border-radius: 6px; padding: 10px 12px; font-size: 12.5px; margin: 6px 0;
-    color: var(--text); overflow-x: auto;
+    color: var(--text); overflow-x: auto; max-width: 100%;
   }
   .cite pre code.hljs {
     background: transparent; padding: 0;
@@ -105,7 +111,22 @@
     letter-spacing: 0.08em; text-transform: uppercase;
     color: var(--muted); margin: 4px 0 2px;
   }
-  table.rows { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; background: #fff; }
+  .table-scroll {
+    overflow-x: auto;
+    max-width: 100%;
+    margin-top: 8px;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fff;
+  }
+  table.rows {
+    width: max-content;
+    min-width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    background: #fff;
+  }
   table.rows th, table.rows td { border: 1px solid var(--border); padding: 5px 9px; text-align: left; }
   table.rows th { background: var(--panel-2); color: var(--muted); font-weight: 600; }
   .muted { color: var(--muted); font-size: 12px; }
@@ -324,7 +345,7 @@ function renderTable(columns, rows) {
   const body = rows.map(r =>
     "<tr>" + cols.map(c => `<td>${escapeHtml(r[c] === null || r[c] === undefined ? "" : String(r[c]))}</td>`).join("") + "</tr>"
   ).join("");
-  return `<table class="rows"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+  return `<div class="table-scroll"><table class="rows"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 
 function formatSQL(sql) {
