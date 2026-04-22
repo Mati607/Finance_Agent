@@ -156,30 +156,3 @@ commitments nobody actually makes.
   the chunk is by or about someone else, even if the topic matches.
   This directly attacks the "most topically similar chunk wins" failure
   that enables speaker substitution in the first place.
-
-### Tradeoffs
-
-**What this catches.** The CEO isn't a participant or author anywhere,
-so the reranker pushes Document 2 down (wrong entity) and the answer
-prompt refuses cleanly. Commitment fabrication is caught because the
-prompt forbids inventing concrete facts and there are no CEO-authored
-commitments to quote.
-
-**What it still misses.**
-
-- Prompt-only mitigations are probabilistic. Adversarial phrasing like
-  *"summarise leadership's view on Q3"* can still regress, because
-  *leadership* is fuzzy enough to license quoting the CFO.
-- The reranker adds one extra LLM call per query (~latency and cost)
-  and is itself an LLM — it can mis-score, and a hard failure falls
-  back to dense order. Cutting `topk_final` to 3 also means a genuinely
-  relevant chunk in ranks 4–10 is now dropped; the bet is that
-  precision matters more than recall in a financial setting.
-- The inverse failure — a real entity *is* present but the retriever
-  fails to surface their chunk in top-k — still produces false-negative
-  refusals. A deterministic entity-presence pre-check against chunk
-  metadata (`author` / `participants`) before calling the LLM would
-  close this gap but adds a role-normalisation problem (is "Chief
-  Executive" the CEO?). For this corpus, the current layering is the
-  right cost/benefit point; at scale I would add the metadata
-  pre-check.
