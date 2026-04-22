@@ -35,7 +35,15 @@ def _rebuild_agent() -> None:
         return
     paths = [f["path"] for f in state["files"]]
     mimes = [f["mime"] for f in state["files"]]
-    retriever = Retriever(paths, mimes, topk=1, ingestor=Ingest, chunker=Chunker)
+    retriever = Retriever(
+        paths,
+        mimes,
+        topk=3,
+        ingestor=Ingest,
+        chunker=Chunker,
+        topk_retrieve=10,
+        topk_final=3,
+    )
     state["agent"] = Agent(retriever)
 
 

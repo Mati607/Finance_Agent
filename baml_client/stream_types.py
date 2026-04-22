@@ -23,7 +23,7 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
     value: StreamStateValueT
     state: typing_extensions.Literal["Pending", "Incomplete", "Complete"]
 # #########################################################################
-# Generated classes (5)
+# Generated classes (7)
 # #########################################################################
 
 class FinancialAnswer(BaseModel):
@@ -34,6 +34,20 @@ class NumericEvidence(BaseModel):
     source_file: typing.Optional[str] = None
     sql: typing.Optional[str] = None
     rows_csv: typing.Optional[str] = None
+
+class RerankCandidate(BaseModel):
+    index: typing.Optional[int] = None
+    source_file: typing.Optional[str] = None
+    title: typing.Optional[str] = None
+    author: typing.Optional[str] = None
+    participants: typing.Optional[str] = None
+    date: typing.Optional[str] = None
+    content: typing.Optional[str] = None
+
+class RerankedChunk(BaseModel):
+    index: typing.Optional[int] = None
+    score: typing.Optional[float] = None
+    reason: typing.Optional[str] = None
 
 class SemanticEvidence(BaseModel):
     source_file: typing.Optional[str] = None

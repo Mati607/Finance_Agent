@@ -22,6 +22,12 @@ type_map = {
     "types.NumericEvidence": types.NumericEvidence,
     "stream_types.NumericEvidence": stream_types.NumericEvidence,
 
+    "types.RerankCandidate": types.RerankCandidate,
+    "stream_types.RerankCandidate": stream_types.RerankCandidate,
+
+    "types.RerankedChunk": types.RerankedChunk,
+    "stream_types.RerankedChunk": stream_types.RerankedChunk,
+
     "types.SemanticEvidence": types.SemanticEvidence,
     "stream_types.SemanticEvidence": stream_types.SemanticEvidence,
 

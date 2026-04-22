@@ -10,7 +10,7 @@ import duckdb
 import os
 
 from baml_client.sync_client import b
-from baml_client.types import TableInfo
+from baml_client.types import TableInfo, RerankCandidate
 
 class SemanticContext:
     def __init__(
@@ -40,11 +40,15 @@ class Retriever:
             mime_types: MimeType,
             topk: int,
             ingestor: Ingest,
-            chunker: Chunker
+            chunker: Chunker,
+            topk_retrieve: Optional[int] = None,
+            topk_final: Optional[int] = None,
     ):
         self.file_urls = file_urls
         self.mime_types = mime_types
-        self.topk = topk
+        self.topk_retrieve = topk_retrieve if topk_retrieve is not None else topk
+        self.topk_final = topk_final if topk_final is not None else topk
+        self.topk = self.topk_final
         self.ingestor = ingestor
         self.chunker = chunker
         self.text_tables = []
@@ -99,14 +103,66 @@ class Retriever:
         query_emb = query_emb / np.linalg.norm(query_emb)
         query_emb = query_emb.reshape(1,-1)
 
-        scores, indices = self.index.search(query_emb,self.topk)
+        k = min(self.topk_retrieve, len(self.chunks))
+        if k <= 0:
+            return []
 
-        results = []
-        for j,i in enumerate(indices[0]):
-            res = SemanticContext(self.chunks[i],scores[0][j])
-            results.append(res)
+        scores, indices = self.index.search(query_emb, k)
 
-        return results
+        candidates: List[SemanticContext] = []
+        for j, i in enumerate(indices[0]):
+            if i < 0:
+                continue
+            candidates.append(SemanticContext(self.chunks[i], float(scores[0][j])))
+
+        return self._rerank(query, candidates)
+
+    def _rerank(
+            self,
+            query: str,
+            candidates: List["SemanticContext"],
+    ) -> List["SemanticContext"]:
+        if not candidates:
+            return []
+
+        payload: List[RerankCandidate] = []
+        for idx, ctx in enumerate(candidates):
+            chunk = ctx.chunk
+            payload.append(
+                RerankCandidate(
+                    index=idx,
+                    source_file=str(chunk.filename or ""),
+                    title=str(chunk.title or ""),
+                    author=str(chunk.author or ""),
+                    participants=", ".join(chunk.participants or []),
+                    date=str(chunk.date or ""),
+                    content=chunk.content,
+                )
+            )
+
+        try:
+            ranked = b.RerankChunks(user_query=query, candidates=payload)
+        except Exception as e:
+            print(f"[retriever] rerank failed, falling back to dense order: {e}")
+            return candidates[: self.topk_final]
+
+        scored: List[Tuple[int, float]] = []
+        seen = set()
+        for item in ranked:
+            idx = item.index
+            if idx < 0 or idx >= len(candidates) or idx in seen:
+                continue
+            seen.add(idx)
+            scored.append((idx, float(item.score)))
+
+        scored.sort(key=lambda p: p[1], reverse=True)
+
+        top = []
+        for idx, score in scored[: self.topk_final]:
+            ctx = candidates[idx]
+            ctx.score = score
+            top.append(ctx)
+        return top
 
     def _generate_sql_query(self, query: str) -> List[Tuple[str, int]]:
         if not self.data_tables:

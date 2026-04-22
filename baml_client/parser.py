@@ -35,6 +35,12 @@ class LlmResponseParser:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="GenerateSQL", llm_response=llm_response, mode="request")
         return typing.cast(typing.List["types.TableSql"], __result__)
 
+    def RerankChunks(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> typing.List["types.RerankedChunk"]:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="RerankChunks", llm_response=llm_response, mode="request")
+        return typing.cast(typing.List["types.RerankedChunk"], __result__)
+
     
 
 class LlmStreamParser:
@@ -54,5 +60,11 @@ class LlmStreamParser:
     ) -> typing.List["stream_types.TableSql"]:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="GenerateSQL", llm_response=llm_response, mode="stream")
         return typing.cast(typing.List["stream_types.TableSql"], __result__)
+
+    def RerankChunks(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> typing.List["stream_types.RerankedChunk"]:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="RerankChunks", llm_response=llm_response, mode="stream")
+        return typing.cast(typing.List["stream_types.RerankedChunk"], __result__)
 
     

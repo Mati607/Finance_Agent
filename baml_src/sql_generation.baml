@@ -27,6 +27,17 @@ function GenerateSQL(user_query: string, tables: TableInfo[]) -> TableSql[] {
       sample rows, set `relevant` to false and `sql` to an empty string.
     - If a table can answer the question, set `relevant` to true and provide a
       single valid DuckDB SQL query that references only the relation `df`.
+    - SELECT every column needed for a downstream LLM to justify the answer,
+      not just the column(s) used for filtering or ordering. For the
+      dimension column(s) the question is about (e.g. business unit, quarter),
+      always include them AND every supporting metric column that makes the
+      answer verifiable — actual, plan, variance, percentage, headcount, notes,
+      etc. When in doubt, include more columns rather than fewer. Do not use
+      `SELECT *` unless the table is narrow; otherwise pick the relevant
+      columns explicitly so the evidence is self-contained.
+    - Preserve the original column names exactly as shown (including spaces,
+      units like "($M)", and casing) — quote them with double quotes when
+      needed.
     - Return exactly one entry per table, preserving the original table_index.
     - Do not use markdown fences or commentary in the `sql` field.
 

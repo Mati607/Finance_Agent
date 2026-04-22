@@ -41,7 +41,7 @@ def all_succeeded(checks: typing.Dict[CheckName, Check]) -> bool:
 # #########################################################################
 
 # #########################################################################
-# Generated classes (5)
+# Generated classes (7)
 # #########################################################################
 
 class FinancialAnswer(BaseModel):
@@ -52,6 +52,20 @@ class NumericEvidence(BaseModel):
     source_file: str
     sql: str
     rows_csv: str
+
+class RerankCandidate(BaseModel):
+    index: int
+    source_file: str
+    title: str
+    author: str
+    participants: str
+    date: str
+    content: str
+
+class RerankedChunk(BaseModel):
+    index: int
+    score: float
+    reason: str
 
 class SemanticEvidence(BaseModel):
     source_file: str
