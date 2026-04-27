@@ -23,6 +23,58 @@ Open <http://localhost:8000>, upload `bu_financials_q3.csv` and
 unit had the largest unfavorable variance in Q3, and what factors does
 the commentary attribute this to?"*
 
+## Run in Docker
+
+The repo ships a self-contained `Dockerfile` (multi-stage, non-root,
+runs `uvicorn app:app` on port 8000). The API key is **never** baked
+into the image — it's read from the runtime environment.
+
+```bash
+# 1. Provide your key (locally or in your hosting provider's secret store)
+cp .env.example .env
+# edit .env and set GOOGLE_API_KEY=...
+
+# 2. Build and run
+docker build -t finance-agent .
+docker run --rm -p 8000:8000 --env-file .env finance-agent
+```
+
+Or with Compose:
+
+```bash
+docker compose up --build
+```
+
+### Deploying to AWS (ECR + ECS/App Runner/Fargate)
+
+Build for the target arch, push to ECR, then inject `GOOGLE_API_KEY`
+from AWS Secrets Manager / SSM Parameter Store into the task
+definition (do **not** use `--env-file` in production):
+
+```bash
+# Build for linux/amd64 even from an Apple Silicon host
+docker buildx build --platform linux/amd64 -t finance-agent:latest .
+
+aws ecr get-login-password --region <region> \
+  | docker login --username AWS --password-stdin <acct>.dkr.ecr.<region>.amazonaws.com
+
+docker tag  finance-agent:latest <acct>.dkr.ecr.<region>.amazonaws.com/finance-agent:latest
+docker push                       <acct>.dkr.ecr.<region>.amazonaws.com/finance-agent:latest
+```
+
+In the ECS task definition (or App Runner config) wire the env var to a
+secret ARN:
+
+```json
+"secrets": [
+  { "name": "GOOGLE_API_KEY",
+    "valueFrom": "arn:aws:secretsmanager:<region>:<acct>:secret:finance-agent/GOOGLE_API_KEY" }
+]
+```
+
+Expose container port `8000` behind your load balancer / App Runner
+service. The image already declares a `HEALTHCHECK` against `/files`.
+
 ## Repository layout
 
 | Path | Purpose |

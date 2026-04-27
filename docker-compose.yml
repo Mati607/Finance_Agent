@@ -1,0 +1,12 @@
+services:
+  finance-agent:
+    build: .
+    image: finance-agent:latest
+    container_name: finance-agent
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./uploads:/app/uploads
+    restart: unless-stopped
