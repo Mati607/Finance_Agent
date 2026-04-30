@@ -1,6 +1,8 @@
 import os
 import pathlib
 import sqlite3
+import time
+from dataclasses import dataclass, field
 from typing import Annotated, Optional
 
 from dotenv import load_dotenv
@@ -52,6 +54,49 @@ app.add_middleware(
 # Per-user agent state: user_id -> {"agent": Agent | None, "files": [...]}
 user_states: dict[int, dict] = {}
 
+@dataclass
+class RateLimiter:
+    limit: int
+    window_s: int
+    hits: dict[str, list[float]] = field(default_factory=dict)
+
+    def allow(self, key: str) -> bool:
+        now = time.time()
+        cutoff = now - self.window_s
+        bucket = self.hits.get(key, [])
+        bucket = [t for t in bucket if t >= cutoff]
+        if len(bucket) >= self.limit:
+            self.hits[key] = bucket
+            return False
+        bucket.append(now)
+        self.hits[key] = bucket
+        return True
+
+
+auth_rl = RateLimiter(limit=20, window_s=60)
+query_rl = RateLimiter(limit=30, window_s=60)
+
+
+def _client_ip(request: Request) -> str:
+    return getattr(request.client, "host", None) or "unknown"
+
+
+def rate_limit(kind: str):
+    def dep(request: Request):
+        ip = _client_ip(request)
+        key = f"{kind}:{ip}"
+        rl = auth_rl if kind == "auth" else query_rl
+        if not rl.allow(key):
+            raise HTTPException(status_code=429, detail="Too many requests. Please slow down.")
+
+    return Depends(dep)
+
+
+def require_admin(user: dict) -> dict:
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin privileges required.")
+    return user
+
 
 def _user_upload_dir(user_id: int) -> pathlib.Path:
     d = UPLOAD_DIR / str(user_id)
@@ -100,6 +145,7 @@ UserDep = Annotated[dict, Depends(current_user)]
 @app.post("/auth/register")
 async def register(
     request: Request,
+    _rl=rate_limit("auth"),
     username: str = Form(...),
     password: str = Form(...),
 ):
@@ -118,6 +164,7 @@ async def register(
 @app.post("/auth/login")
 async def login(
     request: Request,
+    _rl=rate_limit("auth"),
     username: str = Form(...),
     password: str = Form(...),
 ):
@@ -129,7 +176,7 @@ async def login(
 
 
 @app.post("/auth/logout")
-def logout(request: Request):
+def logout(request: Request, _rl=rate_limit("auth")):
     request.session.clear()
     return {"ok": True}
 
@@ -141,7 +188,24 @@ def auth_config():
 
 @app.get("/auth/me")
 def me(user: UserDep):
-    return {"id": user["id"], "username": user["username"]}
+    return {"id": user["id"], "username": user["username"], "role": user.get("role", "user")}
+
+
+@app.post("/auth/admin/set-password")
+def admin_set_password(
+    user: UserDep,
+    _rl=rate_limit("auth"),
+    username: str = Form(...),
+    new_password: str = Form(...),
+):
+    require_admin(user)
+    try:
+        ok = auth_store.set_password(USER_DB, username, new_password)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if not ok:
+        raise HTTPException(status_code=404, detail="User not found.")
+    return {"ok": True}
 
 
 @app.get("/health")
@@ -237,7 +301,7 @@ def _is_nan(v) -> bool:
 
 
 @app.post("/query")
-def query(user: UserDep, q: str = Form(...)):
+def query(user: UserDep, _rl=rate_limit("query"), q: str = Form(...)):
     if not q.strip():
         raise HTTPException(status_code=400, detail="Empty query.")
 

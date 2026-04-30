@@ -37,10 +37,18 @@ def init_db(db_path: Path) -> None:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL COLLATE NOCASE,
                 password_hash TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'user',
                 created_at TEXT NOT NULL
             )
             """
         )
+        cols = {
+            r["name"]
+            for r in conn.execute("PRAGMA table_info(users)").fetchall()
+            if r and r["name"]
+        }
+        if "role" not in cols:
+            conn.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'")
 
 
 def hash_password(plain: str) -> str:
@@ -60,28 +68,37 @@ def create_user(db_path: Path, username: str, password: str) -> dict:
     ph = hash_password(password)
     now = _utc_now()
     with _connect(db_path) as conn:
+        is_first = (
+            int(conn.execute("SELECT COUNT(1) AS c FROM users").fetchone()["c"]) == 0
+        )
+        role = "admin" if is_first else "user"
         cur = conn.execute(
-            "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
-            (username, ph, now),
+            "INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)",
+            (username, ph, role, now),
         )
         uid = int(cur.lastrowid)
-    return {"id": uid, "username": username}
+    return {"id": uid, "username": username, "role": role}
 
 
 def get_user_by_id(db_path: Path, user_id: int) -> Optional[dict]:
     with _connect(db_path) as conn:
         row = conn.execute(
-            "SELECT id, username, created_at FROM users WHERE id = ?", (user_id,)
+            "SELECT id, username, role, created_at FROM users WHERE id = ?", (user_id,)
         ).fetchone()
     if row is None:
         return None
-    return {"id": row["id"], "username": row["username"], "created_at": row["created_at"]}
+    return {
+        "id": row["id"],
+        "username": row["username"],
+        "role": row["role"],
+        "created_at": row["created_at"],
+    }
 
 
 def get_user_by_username(db_path: Path, username: str) -> Optional[dict]:
     with _connect(db_path) as conn:
         row = conn.execute(
-            "SELECT id, username, password_hash, created_at FROM users WHERE username = ?",
+            "SELECT id, username, password_hash, role, created_at FROM users WHERE username = ?",
             (username.strip(),),
         ).fetchone()
     if row is None:
@@ -90,6 +107,7 @@ def get_user_by_username(db_path: Path, username: str) -> Optional[dict]:
         "id": row["id"],
         "username": row["username"],
         "password_hash": row["password_hash"],
+        "role": row["role"],
         "created_at": row["created_at"],
     }
 
@@ -100,4 +118,22 @@ def authenticate(db_path: Path, username: str, password: str) -> Optional[dict]:
         return None
     if not verify_password(password, user["password_hash"]):
         return None
-    return {"id": user["id"], "username": user["username"], "created_at": user["created_at"]}
+    return {
+        "id": user["id"],
+        "username": user["username"],
+        "role": user.get("role", "user"),
+        "created_at": user["created_at"],
+    }
+
+
+def set_password(db_path: Path, username: str, new_password: str) -> bool:
+    username = username.strip()
+    if len(new_password) < 8:
+        raise ValueError("Password must be at least 8 characters.")
+    ph = hash_password(new_password)
+    with _connect(db_path) as conn:
+        cur = conn.execute(
+            "UPDATE users SET password_hash = ? WHERE username = ?",
+            (ph, username),
+        )
+        return int(cur.rowcount) > 0
