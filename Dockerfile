@@ -38,7 +38,7 @@ COPY --from=builder /opt/venv /opt/venv
 
 WORKDIR /app
 
-COPY --chown=app:app app.py ./
+COPY --chown=app:app app.py auth_store.py ./
 COPY --chown=app:app Agent/        ./Agent/
 COPY --chown=app:app Chunking/     ./Chunking/
 COPY --chown=app:app Ingestion/    ./Ingestion/
@@ -47,13 +47,13 @@ COPY --chown=app:app baml_client/  ./baml_client/
 COPY --chown=app:app baml_src/     ./baml_src/
 COPY --chown=app:app static/       ./static/
 
-RUN mkdir -p /app/uploads && chown -R app:app /app
+RUN mkdir -p /app/data && chown -R app:app /app
 
 USER app
 
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD curl -fsS "http://127.0.0.1:${PORT}/files" || exit 1
+  CMD curl -fsS "http://127.0.0.1:${PORT}/health" || exit 1
 
 CMD ["sh", "-c", "uvicorn app:app --host ${HOST} --port ${PORT}"]

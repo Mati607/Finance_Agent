@@ -9,6 +9,8 @@ baml-py
 fastapi
 uvicorn
 python-multipart
+passlib[bcrypt]
+itsdangerous
 
 # evaluation-only
 ragas

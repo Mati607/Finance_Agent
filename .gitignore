@@ -9,3 +9,4 @@ __pycache__/
 README_FOR_CANDIDATE.md
 .env
 commentary_excerpts.txt
+data/

@@ -137,11 +137,64 @@
     display: inline-block; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    flex-wrap: wrap; margin-bottom: 16px;
+  }
+  .topbar h1 { margin: 0; }
+  .user-bar { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+  .user-bar strong { color: var(--text); font-weight: 600; }
+  #auth-panel .card { max-width: 420px; margin: 0 auto 24px; }
+  #app-panel[hidden] { display: none !important; }
+  #auth-panel[hidden] { display: none !important; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Finance Agent</h1>
+  <div id="auth-panel" class="card">
+    <h2>Sign in</h2>
+    <div id="auth-error" class="status error" style="display:none;"></div>
+    <form id="login-form">
+      <div class="field">
+        <label for="login-user">Username</label>
+        <input id="login-user" type="text" name="username" autocomplete="username" required />
+      </div>
+      <div class="field">
+        <label for="login-pass">Password</label>
+        <input id="login-pass" type="password" name="password" autocomplete="current-password" required />
+      </div>
+      <div class="row">
+        <button type="submit">Log in</button>
+        <button type="button" id="show-register" class="secondary" style="display:none;">Create account</button>
+      </div>
+    </form>
+    <form id="register-form" hidden>
+      <p class="muted" style="margin-top:0;">Password must be at least 8 characters.</p>
+      <div class="field">
+        <label for="reg-user">Username</label>
+        <input id="reg-user" type="text" name="username" autocomplete="username" required />
+      </div>
+      <div class="field">
+        <label for="reg-pass">Password</label>
+        <input id="reg-pass" type="password" name="password" autocomplete="new-password" required minlength="8" />
+      </div>
+      <div class="row">
+        <button type="submit">Register</button>
+        <button type="button" id="show-login" class="secondary">Back to log in</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="app-panel" hidden>
+  <div class="topbar">
+    <h1>Finance Agent</h1>
+    <div class="user-bar">
+      <span>Signed in as <strong id="current-username"></strong></span>
+      <button type="button" id="logout-btn" class="secondary">Log out</button>
+    </div>
+  </div>
 
   <div class="card">
     <h2>1. Upload sources (.txt / .csv / .xlsx)</h2>
@@ -164,6 +217,7 @@
   </div>
 
   <div id="chat"></div>
+  </div>
 </div>
 
 <script>
@@ -173,9 +227,111 @@ const uploadStatus = $("upload-status");
 const askStatus = $("ask-status");
 const chat = $("chat");
 
+const fetchOpts = { credentials: "include" };
+
+async function api(path, options = {}) {
+  const r = await fetch(path, { ...fetchOpts, ...options });
+  return r;
+}
+
+function showAuthError(msg) {
+  const el = $("auth-error");
+  if (!msg) {
+    el.style.display = "none";
+    el.textContent = "";
+    return;
+  }
+  el.style.display = "block";
+  el.textContent = msg;
+}
+
+async function loadAuthConfig() {
+  try {
+    const r = await api("/auth/config");
+    const j = await r.json();
+    const btn = $("show-register");
+    if (j.allow_registration) btn.style.display = "";
+    else btn.style.display = "none";
+  } catch (e) {}
+}
+
+async function checkSession() {
+  const r = await api("/auth/me");
+  if (!r.ok) return null;
+  return r.json();
+}
+
+function showApp(username) {
+  $("auth-panel").hidden = true;
+  $("app-panel").hidden = false;
+  $("current-username").textContent = username;
+  showAuthError("");
+  refreshFiles();
+}
+
+function showLogin() {
+  $("auth-panel").hidden = false;
+  $("app-panel").hidden = true;
+  $("login-form").hidden = false;
+  $("register-form").hidden = true;
+}
+
+$("show-register").onclick = () => {
+  $("login-form").hidden = true;
+  $("register-form").hidden = false;
+  showAuthError("");
+};
+$("show-login").onclick = () => {
+  $("login-form").hidden = false;
+  $("register-form").hidden = true;
+  showAuthError("");
+};
+
+$("login-form").onsubmit = async (ev) => {
+  ev.preventDefault();
+  showAuthError("");
+  const fd = new FormData(ev.target);
+  const r = await api("/auth/login", { method: "POST", body: fd });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    showAuthError(j.detail || "Login failed.");
+    return;
+  }
+  showApp(j.username);
+};
+
+$("register-form").onsubmit = async (ev) => {
+  ev.preventDefault();
+  showAuthError("");
+  const fd = new FormData(ev.target);
+  const r = await api("/auth/register", { method: "POST", body: fd });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const d = j.detail;
+    showAuthError(typeof d === "string" ? d : (Array.isArray(d) ? d.map(x => x.msg).join(" ") : "Registration failed."));
+    return;
+  }
+  showApp(j.username);
+};
+
+$("logout-btn").onclick = async () => {
+  await api("/auth/logout", { method: "POST" });
+  chat.innerHTML = "";
+  renderFiles([]);
+  showLogin();
+};
+
+(async function init() {
+  await loadAuthConfig();
+  const me = await checkSession();
+  if (me && me.username) showApp(me.username);
+  else showLogin();
+})();
+
 async function refreshFiles() {
   try {
-    const r = await fetch("/files");
+    const r = await api("/files");
+    if (r.status === 401) return;
     const j = await r.json();
     renderFiles(j.files || []);
   } catch (e) {}
@@ -207,7 +363,7 @@ $("upload-btn").onclick = async () => {
   uploadStatus.innerHTML = '<span class="spinner"></span>Uploading & indexing…';
   $("upload-btn").disabled = true;
   try {
-    const r = await fetch("/upload", { method: "POST", body: fd });
+    const r = await api("/upload", { method: "POST", body: fd });
     const j = await r.json();
     if (!r.ok) throw new Error(j.detail || "Upload failed");
     renderFiles(j.files || []);
@@ -222,7 +378,7 @@ $("upload-btn").onclick = async () => {
 
 $("reset-btn").onclick = async () => {
   if (!confirm("Remove all uploaded files?")) return;
-  await fetch("/reset", { method: "POST" });
+  await api("/reset", { method: "POST" });
   renderFiles([]);
   uploadStatus.textContent = "Cleared.";
 };
@@ -239,7 +395,7 @@ $("ask-btn").onclick = async () => {
   try {
     const fd = new FormData();
     fd.append("q", q);
-    const r = await fetch("/query", { method: "POST", body: fd });
+    const r = await api("/query", { method: "POST", body: fd });
     const j = await r.json();
     if (!r.ok) throw new Error(j.detail || "Query failed");
     appendAnswer(j.answer, j.citations);
@@ -388,8 +544,6 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 }
-
-refreshFiles();
 </script>
 </body>
 </html>
