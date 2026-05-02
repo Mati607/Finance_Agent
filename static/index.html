@@ -68,6 +68,17 @@
     background: var(--accent-soft); border: 1px solid var(--border);
     border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--text);
   }
+  .file-row {
+    display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    max-width: 100%;
+  }
+  .file-row .meta { min-width: 0; word-break: break-word; }
+  a.file-dl {
+    font-size: 11px; font-weight: 600; color: var(--accent);
+    text-decoration: underline; text-underline-offset: 2px;
+    flex-shrink: 0;
+  }
+  a.file-dl:hover { color: var(--accent-hover); }
   .status { font-size: 12px; color: var(--muted); margin-top: 10px; }
   .error { color: var(--err); }
   .message { margin-bottom: 14px; min-width: 0; }
@@ -337,17 +348,44 @@ async function refreshFiles() {
   } catch (e) {}
 }
 
+function formatBytes(n) {
+  if (n == null || n < 0) return "";
+  const u = ["B", "KB", "MB", "GB"];
+  let i = 0;
+  let x = n;
+  while (x >= 1024 && i < u.length - 1) {
+    x /= 1024;
+    i++;
+  }
+  const dec = i === 0 ? 0 : 1;
+  return `${x.toFixed(dec)} ${u[i]}`;
+}
+
 function renderFiles(files) {
   filesEl.innerHTML = "";
   if (!files.length) {
     filesEl.innerHTML = '<span class="muted">No files uploaded yet.</span>';
     return;
   }
-  for (const name of files) {
-    const el = document.createElement("span");
-    el.className = "pill";
-    el.textContent = name;
-    filesEl.appendChild(el);
+  for (const item of files) {
+    const name = typeof item === "string" ? item : item.name;
+    const sz =
+      typeof item === "object" && item && item.size_bytes != null
+        ? formatBytes(item.size_bytes)
+        : "";
+    const row = document.createElement("span");
+    row.className = "pill file-row";
+    const meta = document.createElement("span");
+    meta.className = "meta";
+    meta.textContent = sz ? `${name} · ${sz}` : name;
+    const a = document.createElement("a");
+    a.className = "file-dl";
+    a.href = "/files/download/" + encodeURIComponent(name);
+    a.setAttribute("download", "");
+    a.textContent = "Download";
+    row.appendChild(meta);
+    row.appendChild(a);
+    filesEl.appendChild(row);
   }
 }
 

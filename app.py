@@ -1,13 +1,14 @@
+import mimetypes
 import os
 import pathlib
 import sqlite3
 import time
 from dataclasses import dataclass, field
-from typing import Annotated, Optional
+from typing import Annotated
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from starlette.middleware.sessions import SessionMiddleware
 
 from Agent import Agent
@@ -102,6 +103,31 @@ def _user_upload_dir(user_id: int) -> pathlib.Path:
     d = UPLOAD_DIR / str(user_id)
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def _files_payload(st: dict) -> list[dict]:
+    out: list[dict] = []
+    for f in st["files"]:
+        p = pathlib.Path(f["path"])
+        try:
+            sz = int(p.stat().st_size)
+        except OSError:
+            sz = None
+        out.append({"name": f["name"], "size_bytes": sz})
+    return out
+
+
+def _safe_upload_file_path(user_id: int, raw_name: str) -> pathlib.Path:
+    name = pathlib.Path(raw_name).name.strip()
+    if not name or name in (".", ".."):
+        raise HTTPException(status_code=400, detail="Invalid filename.")
+    root = _user_upload_dir(user_id).resolve()
+    path = (root / name).resolve()
+    try:
+        path.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="File not found.")
+    return path
 
 
 def get_user_state(user_id: int) -> dict:
@@ -221,7 +247,29 @@ def index() -> str:
 @app.get("/files")
 def list_files(user: UserDep):
     st = get_user_state(user["id"])
-    return {"files": [f["name"] for f in st["files"]]}
+    return {"files": _files_payload(st)}
+
+
+@app.get("/files/download/{filename:path}")
+def download_file(user: UserDep, filename: str):
+    uid = user["id"]
+    st = get_user_state(uid)
+    path = _safe_upload_file_path(uid, filename)
+    allowed = {pathlib.Path(x["path"]).resolve() for x in st["files"]}
+    if path.resolve() not in allowed:
+        raise HTTPException(status_code=404, detail="File not found.")
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="File not found.")
+
+    media_type, _ = mimetypes.guess_type(path.name)
+    if not media_type:
+        media_type = "application/octet-stream"
+
+    return FileResponse(
+        path,
+        filename=path.name,
+        media_type=media_type,
+    )
 
 
 @app.post("/upload")
@@ -233,22 +281,25 @@ async def upload(user: UserDep, files: list[UploadFile] = File(...)):
     for f in files:
         if not f.filename:
             continue
-        ext = pathlib.Path(f.filename).suffix.lower()
+        safe_name = pathlib.Path(f.filename).name.strip()
+        if not safe_name:
+            continue
+        ext = pathlib.Path(safe_name).suffix.lower()
         if ext not in EXT_TO_MIME:
             raise HTTPException(
                 status_code=400,
                 detail=f"Unsupported file type: {f.filename}. Allowed: .txt, .csv, .xlsx",
             )
-        dest = udir / f.filename
+        dest = udir / safe_name
         dest.write_bytes(await f.read())
         if not any(x["path"] == str(dest) for x in st["files"]):
             st["files"].append(
-                {"path": str(dest), "mime": EXT_TO_MIME[ext], "name": f.filename}
+                {"path": str(dest), "mime": EXT_TO_MIME[ext], "name": safe_name}
             )
-        saved.append(f.filename)
+        saved.append(safe_name)
 
     _rebuild_agent(uid)
-    return {"uploaded": saved, "files": [f["name"] for f in st["files"]]}
+    return {"uploaded": saved, "files": _files_payload(st)}
 
 
 @app.post("/reset")
